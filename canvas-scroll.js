@@ -251,21 +251,20 @@ function isInRect(x, y, xRect, yRect, widthRect, heightRect) {
 }
 
 function pointEventToCanvas(x, y, debug = false) {
-    // var xOffset = x - canvasController.getCanvasLeft() - canvasController.xOffset;
-    // var yOffset = y - canvasController.getCanvasTop() - canvasController.yOffset;
-    var xScale = (x - canvasController.getCanvasLeft()) / canvasController.scaleRatio - canvasController.xOffset / canvasController.scaleRatio;
+    // var xScale = (x - canvasController.getCanvasLeft()) / canvasController.scaleRatio - canvasController.xOffset / canvasController.scaleRatio;
+    var xScale = (x - canvasController.getCanvasLeft()) / canvasController.scaleRatio - canvasController.xOffset;
     if (debug) console.log("pointEventToCanvas. x = " + x + " | xOffset = " + canvasController.xOffset + " | scaleRatio = " + canvasController.scaleRatio + " | canvasLeft = " + canvasController.getCanvasLeft() + " | RESULT x = " + xScale);
     var yScale = (y - canvasController.getCanvasTop()) / canvasController.scaleRatio - canvasController.yOffset / canvasController.scaleRatio;
     return new Vector(xScale, yScale);
 }
 
 function pointCanvasToScreen(x, y) {
-    // var xScale = canvasController.xOffset + (x * canvasController.scaleRatio + canvasController.getCanvasLeft());
-    // var xScale = (x * canvasController.scaleRatio + canvasController.getCanvasLeft());
+    /*
     var xScale = (x + canvasController.xOffset) * canvasController.scaleRatio + canvasController.getCanvasLeft();
     console.log("pointCanvasToScreen. x = " + x + " | xOffset = " + canvasController.xOffset + " | scaleRatio = " + canvasController.scaleRatio + " | canvasLeft = " + canvasController.getCanvasLeft() + " | RESULT x = " + xScale);
     var yScale = canvasController.yOffset + (y * canvasController.scaleRatio + canvasController.getCanvasTop());
     return new Vector(xScale, yScale);
+    */
 }
 
 function onMouseDown(event) {

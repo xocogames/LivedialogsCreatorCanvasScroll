@@ -238,8 +238,8 @@ function drawCanvas() {
         ctx = canvasController.ctx;
 
         console.log('Canvas. left = ' + canvasController.getCanvasLeft() + " / top = " + canvasController.getCanvasTop());
+        canvasController.scale(1);
         canvasController.translate(100, 10);
-        canvasController.scale(2);
 
         canvas.addEventListener('click', onMouseClick, false);
         canvas.addEventListener('mousemove', onMouseMove, false);
