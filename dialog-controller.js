@@ -68,6 +68,7 @@ class DialogNode extends CanvasElem {
 
         this.textColor = 'black';
         this.textColorSpecial = '#0000ff';
+        this.textFontFamily = 'verdana';
         this.textFontTitle = 'bold 16px verdana';
         this.textFontDescr = '11px verdana';
         this.textFontDescrSpecial = 'bold 14px verdana';
@@ -76,10 +77,16 @@ class DialogNode extends CanvasElem {
         this.bulletRight = new CanvasCircle(5);
         this.iconActor = new CanvasIcon(img, 35, 35);
         this.iconReply = new CanvasIcon("icon-reply.svg", 25, 25);
+        this.iconDrag = new CanvasIcon("icon-drag.png", 25, 25);
 
         this.textDialog = "(none)";
 
         this.hasInput = false;
+    }
+
+    drawSimple() {
+        // console.log("draw(): Dialog. x = " + this.x + " // y = " + this.y);
+        this.draw(this.x, this.y);
     }
 
     draw(x, y) {
@@ -101,8 +108,9 @@ class DialogNode extends CanvasElem {
         this.bulletLeft.draw(x + this.width, y + this.height / 2);
         this.iconActor.draw(x + 5, y + 5);
         this.iconReply.draw(this.x + this.width - this.iconReply.width - 5, this.maxY - this.iconReply.height - 5);
+        this.iconDrag.draw(this.x + this.width - this.iconReply.width - 5, this.minY + 5);
 
-        this.drawTextComplete(this.textDialog, this.iconActor.maxX + 10, y + 20)
+        this.drawTextComplete(this.textDialog, this.minTextX, this.minTextY)
     }
 
     drawText(text, maxLen, x, y) {
@@ -135,7 +143,7 @@ class DialogNode extends CanvasElem {
         var words = text.split(' ');
 
         var xText = x;
-        var yText = y;
+        var yText = y + 10;
         var xWord = xText;
         var idxWord = 0;
         for (; idxWord < words.length; idxWord++) {
@@ -169,9 +177,17 @@ class DialogNode extends CanvasElem {
 
     addInput(x, y) {
 
-        var input = document.createElement('input');
+        // var input = document.createElement('input');
+        // input.type = 'text';
 
-        input.type = 'text';
+        var input = document.createElement('textarea');
+        input.cols = 35;
+        input.rows = 5;
+
+        input.value = this.textDialog;
+        input.style.fontSize = 10 * canvasController.scaleRatio;
+        input.style.fontFamily = this.textFontFamily;
+
         input.style.position = 'fixed';
         input.style.left = (x - 4) + 'px';
         input.style.top = (y - 4) + 'px';
@@ -205,9 +221,12 @@ class DialogNode extends CanvasElem {
         var isCollision = isInRect(x, y, this.x, this.y, this.width, this.height);
         if (isCollision) console.log('Click in dialog.');
         if (isCollision) {
-            var pointinput = pointCanvasToScreen(this.minX, this.minY);
-            // this.addInput(this.minX + canvasController.xOffset, this.minY);
-            this.addInput(pointinput.x, pointinput.y);
+            // var pointinput = pointCanvasToScreen(this.minX, this.minY);
+            // this.addInput(pointinput.x, pointinput.y);
+            if (isInRect(x, y, this.minTextX, this.minTextY, this.maxTextX - this.minTextX, this.maxTextY - this.minTextY)) {
+                var pointinput = pointCanvasToScreen(this.minTextX, this.minTextY);
+                this.addInput(pointinput.x, pointinput.y);
+            }
         }
         return isCollision;
     }
@@ -228,6 +247,11 @@ class DialogNode extends CanvasElem {
     get maxX() { return this.x + this.width; }
     get minY() { return this.y; }
     get maxY() { return this.y + this.height; }
+
+    get minTextX() { return this.iconActor.maxX + 10 }
+    get minTextY() { return this.y + 10 }
+    get maxTextX() { return this.maxX - 20 }
+    get maxTextY() { return this.maxY - 20 }
 }
 
 let dialogNode = null;
@@ -252,13 +276,15 @@ function drawCanvas() {
         dialogController.setActorIcon("ramoncin", 'icons8-kuroo.svg');
 
         dialogNode = dialogController.createRootDialog("1", "elvira");
+        dialogNode.textDialog = "¿Y tú quien diablos eres?, enano de mierda que estas todo el día tocándome los cojones, mamón. Vete a la mierda grandisimo hijo de tu madre que te parió, aborto de pájaro...";
+        dialogNode.draw(50, 25);
     }
 
     // console.log('Canvas. left = ' + canvasController.getCanvasLeft() + " / top = " + canvasController.getCanvasTop());
 
     // var dialogNode = new DialogNode('icons8-kuroo.svg');
-    dialogNode.textDialog = "¿Y tú quien diablos eres?, enano de mierda que estas todo el día tocándome los cojones, mamón. Vete a la mierda grandisimo hijo de tu madre que te parió, aborto de pájaro...";
-    dialogNode.draw(50, 25);
+
+    dialogNode.drawSimple();
 
     var dot = new CanvasCircle(5);
     dot.draw(50, 25);
