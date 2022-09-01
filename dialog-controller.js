@@ -5,17 +5,31 @@ class DialogController {
         this.canvasController = canvasController;
 
         this.mapActorIcons = new Map();
+        this.mapActorColors = new Map();
+
         this.mapTreeDialog = new Map();
         this.listRootDialogs = [];
         this.listAllDialogsIds = [];
+
+        this.dragDialog = null;
+        this.editDialog = null;
     }
 
-    setActorIcon(refActor, imgActor) {
-        this.mapActorIcons.set(refActor, imgActor);
-    }
-
+    setActorSkin(refActor, imgActor, dialogColor = "#DBF9FF") {
+            this.mapActorIcons.set(refActor, imgActor);
+            this.mapActorColors.set(refActor, dialogColor);
+        }
+        /*
+            setActorIcon(refActor, imgActor) {
+                this.mapActorIcons.set(refActor, imgActor);
+            }
+        */
     getActorIcon(refActor) {
         return this.mapActorIcons.get(refActor);
+    }
+
+    getActorColor(refActor) {
+        return this.mapActorColors.get(refActor);
     }
 
     getReplyActor(refActor) {
@@ -31,11 +45,21 @@ class DialogController {
     }
 
     createRootDialog(idDialogNode, refActor) {
-        var dialogNode = new DialogNode(idDialogNode, this.getActorIcon(refActor));
+        var dialogNode = new DialogNode(idDialogNode, refActor, this.getActorIcon(refActor));
+
         this.mapTreeDialog.set(idDialogNode, dialogNode);
         this.listRootDialogs.push(dialogNode);
         this.listAllDialogsIds.push(idDialogNode);
         return dialogNode;
+    }
+
+    startEditDialog(dialogNode) {
+        if (this.editDialog != null && this.editDialog != dialogNode) this.cancelEditDialog(this.editDialog);
+        this.editDialog = dialogNode;
+    }
+
+    cancelEditDialog() {
+        if (this.editDialog != null) this.editDialog.escapeEdit();
     }
 
     onClick(x, y) {
@@ -49,14 +73,83 @@ class DialogController {
         }
         return false;
     }
+
+    onDragDown(x, y) {
+        var dragDialog = this.getDragDialogAt(x, y);
+        if (this.dragDialog != null && (dragDialog == null || dragDialog != this.dragDialog)) this.dragDialog.escapeEdit();
+        if (this.dragDialog == null && dragDialog != null) {
+            dialogController.cancelEditDialog();
+            this.dragDialog = dragDialog;
+            this.dragDialog.onDragDown(x, y);
+            return true;
+        }
+        return false;
+    }
+
+    onDragUp() {
+        if (this.dragDialog != null) {
+            this.dragDialog.onDragUp();
+            this.dragDialog = null;
+            return true;
+        }
+        return false;
+    }
+
+    onDragMove(x, y) {
+        if (this.dragDialog != null) {
+            this.dragDialog.onDragMove(x, y);
+            this.canvasController.clear();
+            drawCanvas();
+            return true;
+        }
+        return false;
+    }
+
+    getDragDialogAt(x, y) {
+        if (this.listAllDialogsIds.length == 0) return false;
+        for (var i = this.listAllDialogsIds.length - 1; i >= 0; i--) {
+            var dialogNode = this.getDialogNode(this.listAllDialogsIds[i]);
+            if (dialogNode != null) {
+                var isClicked = dialogNode.isInDragArea(x, y);
+                if (isClicked) return dialogNode;
+            }
+        }
+        return null;
+    }
+
+    createReplyDialog(dialogParent) {
+        var idDialogNode = uuid();
+        var refActorReply = this.getReplyActor(dialogParent.refActor);
+        console.log("createReply: refActorReply: " + refActorReply + " / parent = " + dialogParent.refActor);
+
+        var dialogNode = this.createRootDialog(idDialogNode, refActorReply);
+        dialogNode.textDialog = "(texto de réplica)";
+
+        var xDialog = dialogParent.maxX + 50;
+        var yDialog = dialogParent.minY;
+
+        dialogNode.at(xDialog, yDialog);
+        this.drawDialogs();
+    }
+
+    drawDialogs() {
+        for (var i = 0; i < this.listAllDialogsIds.length; i++) {
+            var dialogNode = this.getDialogNode(this.listAllDialogsIds[i]);
+            console.log("draw: [" + i + "]: idDialog = " + dialogNode.idDialogNode);
+            if (dialogNode != null) {
+                dialogNode.drawSimple();
+            }
+        }
+    }
 }
 
 class DialogNode extends CanvasElem {
 
-    constructor(id, img) {
+    constructor(id, refActor, icon) {
         super();
         this.idDialogNode = id;
-        this.iconActor = img;
+        this.refActor = refActor;
+        this.refActorIcon = icon;
 
         this.width = 300;
         this.height = 80;
@@ -65,6 +158,7 @@ class DialogNode extends CanvasElem {
 
         this.strokeColor = '#000000';
         this.fillColor = '#DBF9FF';
+        this.fillColor = dialogController.getActorColor(refActor);
 
         this.textColor = 'black';
         this.textColorSpecial = '#0000ff';
@@ -75,7 +169,7 @@ class DialogNode extends CanvasElem {
 
         this.bulletLeft = new CanvasCircle(5);
         this.bulletRight = new CanvasCircle(5);
-        this.iconActor = new CanvasIcon(img, 35, 35);
+        this.iconActor = new CanvasIcon(this.refActorIcon, 35, 35);
         this.iconReply = new CanvasIcon("icon-reply.svg", 25, 25);
         this.iconDrag = new CanvasIcon("icon-drag.png", 25, 25);
 
@@ -84,8 +178,13 @@ class DialogNode extends CanvasElem {
         this.hasInput = false;
     }
 
+    at(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
     drawSimple() {
-        // console.log("draw(): Dialog. x = " + this.x + " // y = " + this.y);
+        console.log("draw(): idDialog = " + this.idDialogNode + ". // x = " + this.x + " // y = " + this.y);
         this.draw(this.x, this.y);
     }
 
@@ -124,7 +223,6 @@ class DialogNode extends CanvasElem {
 
             // console.log('word: |' + word + '|');
             if (word.charAt(0) == '@') {
-                // console.log('SPECIAAAAALLLLLLLLLLLLLLLLL!');
                 ctx.fillStyle = this.textColorSpecial;
                 ctx.font = this.textFontDescrSpecial;
 
@@ -177,9 +275,6 @@ class DialogNode extends CanvasElem {
 
     addInput(x, y) {
 
-        // var input = document.createElement('input');
-        // input.type = 'text';
-
         var input = document.createElement('textarea');
         input.cols = 35;
         input.rows = 5;
@@ -195,6 +290,7 @@ class DialogNode extends CanvasElem {
         input.dialogNode = this;
         input.onkeydown = this.handleEnter;
 
+        this.input = input;
         document.body.appendChild(input);
 
         input.focus();
@@ -204,31 +300,61 @@ class DialogNode extends CanvasElem {
 
     handleEnter(e) {
         var keyCode = e.keyCode;
+        var dialogNode = this.dialogNode;
+
+        console.log("ctrlkey = " + e.ctrlKey + " // metalkey = " + e.metakey + " // keycode = " + keyCode);
         if (keyCode === 13) {
-            var dialogNode = this.dialogNode;
-            dialogNode.textDialog = this.value;
+            if (e.ctrlKey == false) { // Se guarda el contenido y se cierra el textarea
+                dialogNode.textDialog = this.value;
 
-            // dialogNode.drawTextComplete(dialogNode.textDialog, dialogNode.minX + 10, dialogNode.minY + 10);
-            dialogNode.draw(dialogNode.minX, dialogNode.minY);
+                dialogNode.draw(dialogNode.minX, dialogNode.minY);
 
-            document.body.removeChild(this);
-            dialogNode.hasInput = false;
+                document.body.removeChild(this);
+                dialogNode.hasInput = false;
+            } else { // Se inserta una nueva linea
+                var position = this.selectionEnd;
+                this.value = this.value.substring(0, position) + '\n' + this.value.substring(position);
+                this.selectionEnd = position;
+            }
+        }
+        if (keyCode === 27) {
+            dialogNode.escapeEdit();
+        }
+    }
+
+    escapeEdit() {
+        if (this.hasInput) {
+            document.body.removeChild(this.input);
+            this.hasInput = false;
+            this.draw(this.minX, this.minY);
         }
     }
 
     onClick(x, y) {
-        // console.log('Click dialog?');
         var isCollision = isInRect(x, y, this.x, this.y, this.width, this.height);
         if (isCollision) console.log('Click in dialog.');
         if (isCollision) {
-            // var pointinput = pointCanvasToScreen(this.minX, this.minY);
-            // this.addInput(pointinput.x, pointinput.y);
-            if (isInRect(x, y, this.minTextX, this.minTextY, this.maxTextX - this.minTextX, this.maxTextY - this.minTextY)) {
-                var pointinput = pointCanvasToScreen(this.minTextX, this.minTextY);
-                this.addInput(pointinput.x, pointinput.y);
+
+            if (this.iconReply.onClick(x, y)) {
+                dialogController.createReplyDialog(this);
+            } else {
+
+                if (isInRect(x, y, this.minTextX, this.minTextY, this.maxTextX - this.minTextX, this.maxTextY - this.minTextY)) {
+                    var pointinput = pointCanvasToScreen(this.minTextX, this.minTextY);
+                    this.addInput(pointinput.x, pointinput.y);
+                    dialogController.startEditDialog(this);
+                }
             }
         }
         return isCollision;
+    }
+
+    isInArea(x, y) {
+        return isInRect(x, y, this.x, this.y, this.width, this.height);
+    }
+
+    isInDragArea(x, y) {
+        return isInRect(x, y, this.iconDrag.x, this.iconDrag.y, this.iconDrag.width, this.iconDrag.height);
     }
 
     cutText(text, maxLen) {
@@ -254,7 +380,7 @@ class DialogNode extends CanvasElem {
     get maxTextY() { return this.maxY - 20 }
 }
 
-let dialogNode = null;
+// let dialogNode = null;
 
 function drawCanvas() {
     if (canvasController == null) {
@@ -262,20 +388,21 @@ function drawCanvas() {
         ctx = canvasController.ctx;
 
         console.log('Canvas. left = ' + canvasController.getCanvasLeft() + " / top = " + canvasController.getCanvasTop());
-        canvasController.scale(2);
+        canvasController.scale(1);
         canvasController.translate(100, 10);
 
         canvas.addEventListener('click', onMouseClick, false);
         canvas.addEventListener('mousemove', onMouseMove, false);
         canvas.addEventListener('mousedown', onMouseDown, false);
         canvas.addEventListener('mouseup', onMouseUp, false);
+        canvas.addEventListener("keydown", onKeyDown, false);
 
 
         dialogController = new DialogController(canvasController);
-        dialogController.setActorIcon("elvira", 'girl.png');
-        dialogController.setActorIcon("ramoncin", 'icons8-kuroo.svg');
+        dialogController.setActorSkin("elvira", 'girl.png');
+        dialogController.setActorSkin("ramoncin", 'icons8-kuroo.svg', "#CEFFDA");
 
-        dialogNode = dialogController.createRootDialog("1", "elvira");
+        var dialogNode = dialogController.createRootDialog("1", "elvira");
         dialogNode.textDialog = "¿Y tú quien diablos eres?, enano de mierda que estas todo el día tocándome los cojones, mamón. Vete a la mierda grandisimo hijo de tu madre que te parió, aborto de pájaro...";
         dialogNode.draw(50, 25);
     }
@@ -284,7 +411,8 @@ function drawCanvas() {
 
     // var dialogNode = new DialogNode('icons8-kuroo.svg');
 
-    dialogNode.drawSimple();
+    // dialogNode.drawSimple();
+    dialogController.drawDialogs();
 
     var dot = new CanvasCircle(5);
     dot.draw(50, 25);
@@ -307,44 +435,42 @@ function drawCanvas() {
 
 
     function onMouseClick(event) {
-        /*
-        console.log('Canvas. left = ' + canvasController.getCanvasLeft() + " / top = " + canvasController.getCanvasTop());
-        var xOffset = event.clientX - canvasController.getCanvasLeft() - canvasController.xOffset;
-        var yOffset = event.clientY - canvasController.getCanvasTop() - canvasController.yOffset;
-        var xScale = (event.clientX - canvasController.getCanvasLeft()) / canvasController.scaleRatio - canvasController.xOffset / canvasController.scaleRatio;
-        var yScale = (event.clientY - canvasController.getCanvasTop()) / canvasController.scaleRatio - canvasController.yOffset / canvasController.scaleRatio;
-        console.log('Click. x = ' + event.clientX + " / y = " + event.clientY + " /// xOffset = " + xOffset + " / yOffset = " + yOffset + " /// xScale = " + xScale + " / yScale = " + yScale);
-        dialogController.onClick(xScale, yScale);
-        */
-
         console.log("Click");
 
         var point = pointEventToCanvas(event.clientX, event.clientY, true);
         dialogController.onClick(point.x, point.y);
-
-        // dot.onClick(xScale, yScale);
-        // icon.onClick(xScale, yScale);
-
-        // canvasController.clear();
-        // canvasController.translate(0, 30 * 2.5);
-        // drawCanvas();
         return true;
+    }
+}
+
+function onMouseDown(event) {
+    var point = pointEventToCanvas(event.clientX, event.clientY);
+    // console.log('Mouse down. x = ' + event.clientX + " / y = " + event.clientY + " /// canvas. x = " + point.x + " y = " + point.y);
+    var isDragDialog = dialogController.onDragDown(point.x, point.y);
+    if (!isDragDialog) {
+        dialogController.cancelEditDialog();
+        canvasController.dragDown(point.x, point.y);
+    }
+}
+
+function onMouseUp(event) {
+    var point = pointEventToCanvas(event.clientX, event.clientY);
+    // console.log('Mouse up. x = ' + event.clientX + " / y = " + event.clientY + " /// canvas. x = " + point.x + " y = " + point.y);
+    var isDragDialog = dialogController.onDragUp();
+    if (!isDragDialog) {
+        canvasController.dragUp();
     }
 }
 
 function onMouseMove(event) {
     var point = pointEventToCanvas(event.clientX, event.clientY);
     // console.log('Mouse move. x = ' + event.clientX + " / y = " + event.clientY + " /// canvas. x = " + point.x + " y = " + point.y);
-
-    /*
-    var dragMove = canvasController.dragPosition(point.x, point.y);
-    if (dragMove != null) {
-        console.log('DRAG trasnlate. x = ' + event.clientX + " / y = " + event.clientY + " /// move. x = " + dragMove.x + " y = " + dragMove.y);
-        canvasController.clear();
-        canvasController.translate(dragMove.x, dragMove.y);
-        drawCanvas();
+    var isDragDialog = dialogController.onDragMove(point.x, point.y);
+    if (!isDragDialog) {
+        canvasController.dragMove(point.x, point.y);
     }
-    */
+}
 
-    canvasController.dragMove(point.x, point.y);
+function onKeyDown(event) {
+
 }

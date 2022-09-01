@@ -36,13 +36,6 @@ class CanvasController {
         return this.rect.top;
     }
 
-    /*
-    updateRect() {
-        this.rect = this.ctx.canvas.getBoundingClientRect();
-        // console.log("RECT: minX = " + this.rect.left + " | maxX = " + this.rect.right);
-    }
-    */
-
     translate(xoffset, yoffset) {
         this.ctx.translate(xoffset, yoffset);
         this.offset = {
@@ -78,30 +71,43 @@ class CanvasController {
 
     dragMove(x, y) {
         if (this.drag) {
-            /*
-            this.dragActual = {
-                xx: x - this.canvas.offsetLeft,
-                yy: y - this.canvas.offsetTop
-            }
-            */
             this.clear();
             this.translate(x - this.dragStart.xx, y - this.dragStart.yy);
-            // this.dragStart.xx = x;
-            // this.dragStart.yy = y;
-            // this.ctx.translate(this.dragActual.xx - this.dragStart.xx, this.dragActual.yy - this.dragStart.yy);
-            // this.dragStart = this.dragActual;
             drawCanvas();
         }
     }
 
-    get xOffset() {
-        // console.log("xOffset: dragEnd.xx = " + this.dragEnd.xx + " | dragInit.xx = " + this.dragInit.xx);
-        return this.offset.xx;
-    }
+    get xOffset() { return this.offset.xx; }
     get yOffset() { return this.offset.yy; }
 }
 
 class CanvasElem {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.dragStart = null;
+    }
+
+    onDragDown(x, y) {
+        this.dragStart = {
+            xx: x,
+            yy: y
+        }
+        this.dragStart.xx -= this.x;
+        this.dragStart.yy -= this.y;
+    }
+
+    onDragUp() {
+        this.dragStart = null;
+    }
+
+    onDragMove(x, y) {
+        if (this.dragStart != null) {
+            this.x = x - this.dragStart.xx;
+            this.y = y - this.dragStart.yy;
+        }
+    }
+
     get minX() { return 0; }
     get maxX() { return 0; }
     get minY() { return 0; }
@@ -264,25 +270,8 @@ function pointCanvasToScreen(x, y) {
     return new Vector(xScale, yScale);
 }
 
-function onMouseDown(event) {
-    var point = pointEventToCanvas(event.clientX, event.clientY);
-    // console.log('Mouse down. x = ' + event.clientX + " / y = " + event.clientY + " /// canvas. x = " + point.x + " y = " + point.y);
-
-    // canvasController.dragStart(point.x, point.y);
-
-    canvasController.dragDown(point.x, point.y);
-}
-
-function onMouseUp(event) {
-    var point = pointEventToCanvas(event.clientX, event.clientY);
-
-    // console.log('Mouse up. x = ' + event.clientX + " / y = " + event.clientY + " /// canvas. x = " + point.x + " y = " + point.y);
-    // canvasController.dragStop();
-
-    canvasController.dragUp();
-}
-
-function scrollCanvas() {
-    // canvasController.updateRect();
-    // console.log('Canvas. left = ' + canvasController.getCanvasLeft() + " / top = " + canvasController.getCanvasTop());
+function uuid() {
+    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
 }
