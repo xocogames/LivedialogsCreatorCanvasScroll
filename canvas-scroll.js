@@ -88,6 +88,11 @@ class CanvasElem {
         this.dragStart = null;
     }
 
+    at(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+
     onDragDown(x, y) {
         this.dragStart = {
             xx: x,
@@ -119,6 +124,10 @@ class CanvasCircle extends CanvasElem {
         super();
         this.radius = radius;
         this.color = color;
+    }
+
+    drawSimple() {
+        this.draw(this.x, this.y);
     }
 
     draw(x, y) {
@@ -223,6 +232,20 @@ class Vector {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+    }
+}
+
+class Arrow {
+    constructor(xIni, yIni, xEnd, yEnd, color = "#FF0000") {
+        this.xIni = xIni;
+        this.yIni = yIni;
+        this.xEnd = xEnd;
+        this.yEnd = yEnd;
+        this.color = color;
+    }
+
+    draw() {
+        drawCanvasArrow(ctx, this.xIni, this.yIni, this.xEnd, this.yEnd, color);
     }
 }
 

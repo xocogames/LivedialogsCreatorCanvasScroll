@@ -13,6 +13,8 @@ class DialogController {
 
         this.dragDialog = null;
         this.editDialog = null;
+
+        this.dragArrow = null;
     }
 
     setActorSkin(refActor, imgActor, dialogColor = "#DBF9FF") {
@@ -83,6 +85,10 @@ class DialogController {
             this.dragDialog.onDragDown(x, y);
             return true;
         }
+        if (this.dragArrow == null) {
+            this.dragArrow = this.getDragArrowAt(x, y);
+            return true;
+        }
         return false;
     }
 
@@ -117,6 +123,21 @@ class DialogController {
         return null;
     }
 
+    getDragArrowAt(x, y) {
+        if (this.listAllDialogsIds.length == 0) return false;
+        for (var i = this.listAllDialogsIds.length - 1; i >= 0; i--) {
+            var dialogNode = this.getDialogNode(this.listAllDialogsIds[i]);
+            if (dialogNode != null) {
+                var isClicked = dialogNode.isInDragArrow(x, y);
+                if (isClicked) {
+                    var dialogArrow = new Arrow(dialogNode.bulletRight.x, dialogNode.bulletRight.y, x, y);
+                    return dialogArrow;
+                }
+            }
+        }
+        return null;
+    }
+
     createReplyDialog(dialogParent) {
         var idDialogNode = uuid();
         var refActorReply = this.getReplyActor(dialogParent.refActor);
@@ -129,6 +150,9 @@ class DialogController {
         var yDialog = dialogParent.minY;
 
         dialogNode.at(xDialog, yDialog);
+
+        dialogParent.addDialogReply(dialogNode);
+
         this.drawDialogs();
     }
 
@@ -141,6 +165,7 @@ class DialogController {
             }
         }
     }
+
 }
 
 class DialogNode extends CanvasElem {
@@ -176,11 +201,20 @@ class DialogNode extends CanvasElem {
         this.textDialog = "(none)";
 
         this.hasInput = false;
+
+        this.listReplies = [];
+    }
+
+    addDialogReply(dialogReply) {
+        this.listReplies.push(dialogReply);
     }
 
     at(x, y) {
         this.x = x;
         this.y = y;
+
+        this.bulletLeft.at(x, y + this.height / 2);
+        this.bulletRight.at(x + this.width, y + this.height / 2);
     }
 
     drawSimple() {
@@ -204,12 +238,14 @@ class DialogNode extends CanvasElem {
         ctx.fill();
 
         this.bulletLeft.draw(x, y + this.height / 2);
-        this.bulletLeft.draw(x + this.width, y + this.height / 2);
+        this.bulletRight.draw(x + this.width, y + this.height / 2);
         this.iconActor.draw(x + 5, y + 5);
         this.iconReply.draw(this.x + this.width - this.iconReply.width - 5, this.maxY - this.iconReply.height - 5);
         this.iconDrag.draw(this.x + this.width - this.iconReply.width - 5, this.minY + 5);
 
-        this.drawTextComplete(this.textDialog, this.minTextX, this.minTextY)
+        this.drawTextComplete(this.textDialog, this.minTextX, this.minTextY);
+
+        this.drawArrows();
     }
 
     drawText(text, maxLen, x, y) {
@@ -271,6 +307,17 @@ class DialogNode extends CanvasElem {
             ctx.font = this.textFontDescr;
         }
         ctx.fillText(word + ' ', x, y);
+    }
+
+    drawArrows() {
+        for (var i = 0; i < this.listReplies.length; i++) {
+            var dialogReply = this.listReplies[i];
+            this.drawArrowTo(dialogReply);
+        }
+    }
+
+    drawArrowTo(dialogReply) {
+        drawCanvasArrow(ctx, this.bulletRight.x, this.bulletRight.y, dialogReply.bulletLeft.x, dialogReply.bulletLeft.y);
     }
 
     addInput(x, y) {
@@ -355,6 +402,10 @@ class DialogNode extends CanvasElem {
 
     isInDragArea(x, y) {
         return isInRect(x, y, this.iconDrag.x, this.iconDrag.y, this.iconDrag.width, this.iconDrag.height);
+    }
+
+    isInDragArrow(x, y) {
+        return this.bulletRight.onClick(x, y);
     }
 
     cutText(text, maxLen) {
@@ -450,6 +501,10 @@ function onMouseDown(event) {
     if (!isDragDialog) {
         dialogController.cancelEditDialog();
         canvasController.dragDown(point.x, point.y);
+    }
+
+    if (dialogController.dragArrow != null) {
+        dialogController.dragArrow.draw();
     }
 }
 
